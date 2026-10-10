@@ -1,0 +1,203 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  llmProvider   String?
+  llmApiKeyEnc  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  senders       SenderAccount[]
+  lists         RecipientList[]
+  drafts        Draft[]
+  campaigns     Campaign[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum SenderType {
+  smtp
+  gmail
+}
+
+model SenderAccount {
+  id           String     @id @default(cuid())
+  userId       String
+  type         SenderType @default(smtp)
+  label        String
+  fromEmail    String
+  fromName     String?
+  smtpHost     String?
+  smtpPort     Int?
+  smtpUser     String?
+  smtpPassEnc  String?
+  smtpSecure   Boolean    @default(true)
+  // Gmail OAuth stubs for later
+  gmailRefreshTokenEnc String?
+  gmailAccessTokenEnc  String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sendJobs SendJob[]
+
+  @@index([userId])
+}
+
+model RecipientList {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipients Recipient[]
+
+  @@index([userId])
+}
+
+model Recipient {
+  id           String   @id @default(cuid())
+  listId       String
+  email        String
+  name         String?
+  company      String?
+  customFields Json     @default("{}")
+  createdAt    DateTime @default(now())
+
+  list RecipientList @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@unique([listId, email])
+  @@index([listId])
+}
+
+model Draft {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  subject   String
+  htmlBody  String   @db.Text
+  textBody  String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum CampaignMode {
+  single
+  rotate
+}
+
+enum CampaignStatus {
+  draft
+  queued
+  running
+  completed
+  cancelled
+}
+
+model Campaign {
+  id              String         @id @default(cuid())
+  userId          String
+  name            String
+  subject         String
+  htmlBody        String         @db.Text
+  textBody        String         @db.Text
+  mode            CampaignMode   @default(single)
+  delayMs         Int            @default(30000)
+  aiEnabled       Boolean        @default(false)
+  status          CampaignStatus @default(queued)
+  senderIds       String[]
+  listId          String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobs SendJob[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum SendJobStatus {
+  pending
+  sending
+  sent
+  failed
+}
+
+model SendJob {
+  id               String        @id @default(cuid())
+  campaignId       String
+  senderAccountId  String
+  recipientEmail   String
+  recipientName    String?
+  recipientCompany String?
+  customFields     Json          @default("{}")
+  subject          String?
+  htmlBody         String?       @db.Text
+  textBody         String?       @db.Text
+  status           SendJobStatus @default(pending)
+  error            String?       @db.Text
+  aiNote           String?
+  sentAt           DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  campaign Campaign      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sender   SenderAccount @relation(fields: [senderAccountId], references: [id], onDelete: Restrict)
+
+  @@index([campaignId, status])
+  @@index([status])
+}

@@ -1,0 +1,43 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --ink: #15202b;
+  --muted: #5b6b7c;
+  --line: #d7dee7;
+  --accent: #0f6e56;
+  --accent-soft: #e6f4ef;
+  --danger: #b42318;
+  --warn: #b54708;
+}
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--ink);
+  --font-sans: var(--font-dm-sans);
+  --font-display: var(--font-fraunces);
+}
+
+body {
+  background:
+    radial-gradient(1200px 500px at 10% -10%, #dceee7 0%, transparent 55%),
+    radial-gradient(900px 400px at 100% 0%, #e7eef8 0%, transparent 50%),
+    var(--bg);
+  color: var(--ink);
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+}
+
+.ProseMirror {
+  min-height: 180px;
+  outline: none;
+}
+
+.ProseMirror p {
+  margin: 0.5rem 0;
+}
+
+.ProseMirror a {
+  color: var(--accent);
+  text-decoration: underline;
+}
